@@ -8,7 +8,7 @@ import com.blankj.utilcode.util.LogUtils
 import com.huawei.hiai.asr.AsrCloudEngine
 import com.huawei.hiai.asr.AsrConstants
 import com.huawei.hiai.asr.AsrListener
-import com.newolf.speechtotextdemo.view.VolumeDrawable
+import com.newolf.volumelib.SpeechDrawable
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
@@ -36,28 +36,19 @@ class MainActivity : AppCompatActivity() {
 
          audioRecorder = AudioRecorder.getInstance()
         audioRecorder.createDefaultAudio()
-        val volumeDrawable = VolumeDrawable()
-        volumeDrawable.setLineWidth(3)
-        volumeDrawable.setMinHeight(3)
-        volumeDrawable.setStepWidth(8)
-        volumeDrawable.scale(0.8F)
+        val volumeDrawable = SpeechDrawable()
+        volumeDrawable.setLineWidth(4)
+        volumeDrawable.setMinHeight(4)
+        volumeDrawable.setStepWidth(10)
         iv.setImageDrawable(volumeDrawable)
         volumeDrawable.start()
-//        volumeDrawable.setVolume(8)
 
 
 
 
 
 
-        val volumeDrawableBack = VolumeDrawable()
-        volumeDrawableBack.setMode(2)
-        volumeDrawableBack.setLineWidth(3)
-        volumeDrawableBack.setMinHeight(3)
-        volumeDrawableBack.setmIndex(8)
-        volumeDrawableBack.scale(1.0F)
-        ivBack.setImageDrawable(volumeDrawable)
-        volumeDrawableBack.start()
+
 
 
 
@@ -105,11 +96,10 @@ class MainActivity : AppCompatActivity() {
                             while (i < end) {
                                 wv.addData(audioData[i])
 
-                                volumeDrawableBack.setVolume(audioData[i].toInt())
                                 i += 480
                             }
 
-                            volumeDrawable.setVolume(audioData[28].toInt())
+                            volumeDrawable.setVolume(audioData[10].toInt() )
 
                         }
 
@@ -173,6 +163,7 @@ class MainActivity : AppCompatActivity() {
 var stopTime = System.currentTimeMillis()
     fun stop(){
         runOnUiThread { btnStart.text = "Start"
+
             }
 
         audioRecorder.stopRecord()

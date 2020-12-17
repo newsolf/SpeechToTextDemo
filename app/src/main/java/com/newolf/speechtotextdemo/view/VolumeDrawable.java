@@ -65,7 +65,7 @@ public class VolumeDrawable extends AbsDrawable implements ISwitcher, Runnable {
         this.mHeightCaches = new SparseArray<>();
     }
 
-    @Override // com.iflytek.inputmethod.common.view.widget.drawable.AbsDrawable
+    @Override
     public void scale(float f) {
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "scale: " + f);
@@ -81,7 +81,7 @@ public class VolumeDrawable extends AbsDrawable implements ISwitcher, Runnable {
 
 
 
-    @Override // com.iflytek.inputmethod.common.view.widget.drawable.AbsDrawable
+    @Override
     public void setColorFilter(SparseIntArray sparseIntArray) {
         if (sparseIntArray != null && sparseIntArray.indexOfKey(0) >= 0) {
             this.mNormalColor = sparseIntArray.get(0);
@@ -458,14 +458,14 @@ public class VolumeDrawable extends AbsDrawable implements ISwitcher, Runnable {
         }
     }
 
-    @Override // com.iflytek.inputmethod.common.view.widget.interfaces.ISwitcher
+    @Override
     public void start() {
         stop();
         this.mIsRunning = true;
         run();
     }
 
-    @Override // com.iflytek.inputmethod.common.view.widget.interfaces.ISwitcher
+    @Override
     public void stop() {
         this.mIsRunning = false;
         this.mIncrease = false;
@@ -479,7 +479,7 @@ public class VolumeDrawable extends AbsDrawable implements ISwitcher, Runnable {
         public float d;
         public float t;
 
-        @Override // com.iflytek.inputmethod.common.objectpool.RecyclableObject
+        @Override
         public void doRecycle() {
         }
     }
@@ -491,13 +491,13 @@ public class VolumeDrawable extends AbsDrawable implements ISwitcher, Runnable {
             this.mCacheSize = i;
         }
 
-        /* access modifiers changed from: protected */
-        @Override // com.iflytek.inputmethod.common.objectpool.ObjectPool
+
+        @Override
         public FrameUnit createNewObject() {
             return new FrameUnit();
         }
 
-        @Override // com.iflytek.inputmethod.common.objectpool.ObjectPool
+        @Override
         public int getClearCnt() {
             return this.mCacheSize;
         }
