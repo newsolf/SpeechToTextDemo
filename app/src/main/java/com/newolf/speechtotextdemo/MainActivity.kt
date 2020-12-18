@@ -36,12 +36,12 @@ class MainActivity : AppCompatActivity() {
 
          audioRecorder = AudioRecorder.getInstance()
         audioRecorder.createDefaultAudio()
-        val volumeDrawable = SpeechDrawable()
-        volumeDrawable.setLineWidth(4)
-        volumeDrawable.setMinHeight(4)
-        volumeDrawable.setStepWidth(10)
-        iv.setImageDrawable(volumeDrawable)
-        volumeDrawable.start()
+        val speechDrawable = SpeechDrawable()
+        speechDrawable.lineWidth = 4
+        speechDrawable.minHeight = 4
+        speechDrawable.setStepWidth(10)
+        iv.setImageDrawable(speechDrawable)
+        speechDrawable.start()
 
 
 
@@ -99,7 +99,7 @@ class MainActivity : AppCompatActivity() {
                                 i += 480
                             }
 
-                            volumeDrawable.setVolume(audioData[10].toInt() )
+                            speechDrawable.setVolume(audioData[10].toInt() )
 
                         }
 
