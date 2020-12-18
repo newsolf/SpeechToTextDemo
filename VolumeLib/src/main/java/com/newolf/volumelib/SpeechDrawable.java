@@ -1,6 +1,7 @@
 package com.newolf.volumelib;
 
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.ColorFilter;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
@@ -8,37 +9,55 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
-import android.util.Log;
 import android.util.SparseArray;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * 语音动画
+ *
+ * @author NeWolf
+ * @since 2020-12-16
+ */
 public class SpeechDrawable extends Drawable implements Runnable {
-
-    private static final String TAG = SpeechDrawable.class.getSimpleName();
+    private static final float DRAW_INTERVAL = 0.016f;
     private static final double DOUBLE_PARSE = 0.05000000074505806d;
-    static Random random;
+    private static final double EXPONENT = 0.3330000042915344d;
+    private static final int MIN_BUF_SIZE = 62;
+    private static final int POW_INT = 18;
+    private static final float MAX_TEMP_VOL = 0.6f;
+    private static final int POW_FOUR = 4;
+    private static final double POW_HALF = 0.5;
+    private static final int INT_TEN = 10;
+    private static final int INT_HUNDRED = 100;
+    private static final double DOUBLE_TEMP_VOL = 8.0d;
+    private static final float FLOAT_MIN_VOL = 0.1f;
+    private static final float FLOAT_TOW = 2.0f;
+    private static final float TEMP_F = 0.05f;
+    private static final float FLOAT_RANDOM = 20.0f;
+    private static final float FLOAT_POW = 0.8f;
+    private static final int INT_MIN = 30;
+    private static final float FLOAT_LINE = 0.3f;
+    private static final float FLOAT_LINE_MIN = 0.135f;
+    private static final int NORMAL_COLOR = Color.BLUE;
+    private static Random sRandom;
     private List<LineData> mDatas;
     private double mDenominator;
-    private int mDisableColor = -2144366082;
     private RectF mDrawRect;
     private float[] mEh;
     private boolean mEnable = true;
     private FrameUnitPool mFrameUnitPool;
     private SparseArray<Double> mHeightCaches;
-    private boolean mIncrease;
-    private int mIndex;
     private boolean mInited;
     private boolean mIsRunning;
     private int mLineCount;
-    private float mLineWidth;
+    private int mLineWidth;
     private int[] mLoc;
     private int mLowMode;
     private int mMinHeight;
-    private int mMode = 1;
-    private int mNormalColor = -13659650;
+    private int mLineColor = NORMAL_COLOR;
     private Paint mPaint = new Paint();
     private SparseArray<Double> mRandomCaches;
     private int mStepWidth;
@@ -46,129 +65,133 @@ public class SpeechDrawable extends Drawable implements Runnable {
     private int mViewHeight;
     private int mViewWidth;
 
-    public static class LineData {
-        public int height;
-        public float lastHeight;
-        public List<FrameUnit> timeList;
-        public int width;
-        public int x;
-        public int y;
-    }
 
     public SpeechDrawable() {
         mPaint.setAntiAlias(true);
-        mPaint.setColor(mNormalColor);
+        mPaint.setColor(mLineColor);
         mDrawRect = new RectF();
         mRandomCaches = new SparseArray<>();
         mHeightCaches = new SparseArray<>();
     }
 
-
-    public int getNormalColor() {
-        return mNormalColor;
+    /**
+     * 设置声波线颜色
+     *
+     * @param color int
+     */
+    public void setLineColor(int color) {
+        mLineColor = color;
+        invalidateSelf();
     }
 
+    /**
+     * 设置声波线间隔
+     *
+     * @param stepWidth int
+     */
+    public void setStepWidth(int stepWidth) {
+        mStepWidth = stepWidth;
+    }
+
+    /**
+     * 设置声波线宽度
+     *
+     * @param lineWidth int
+     */
+    public void setLineWidth(int lineWidth) {
+        mLineWidth = lineWidth;
+    }
+
+    /**
+     * 设置最小高度
+     *
+     * @param minHeight int
+     */
+    public void setMinHeight(int minHeight) {
+        mMinHeight = minHeight;
+    }
+
+    public int getLineWidth() {
+        return mLineWidth;
+    }
+
+
+    public int getLineCount() {
+        return mLineCount;
+    }
+
+    public int getMinHeight() {
+        return mMinHeight;
+    }
+
+    @Override
     public void draw(Canvas canvas) {
         canvas.save();
         canvas.clipRect(getBounds());
-        if (mMode == 1) {
-            if (BuildConfig.DEBUG) {
-                long currentTimeMillis = System.currentTimeMillis();
-                drawVolume(canvas);
-                Log.d(TAG, "draw volume: " + (System.currentTimeMillis() - currentTimeMillis) + " ms");
-            } else {
-                drawVolume(canvas);
-            }
-        } else if (mMode == 2) {
-            if (BuildConfig.DEBUG) {
-                long currentTimeMillis2 = System.currentTimeMillis();
-                drawWait(canvas);
-                Log.d(TAG, "draw wait: " + (System.currentTimeMillis() - currentTimeMillis2) + " ms");
-            } else {
-                drawWait(canvas);
-            }
-        }
+        drawVolume(canvas);
         canvas.restore();
     }
 
-    public void setAlpha(int i) {
+    @Override
+    public void setAlpha(int alpha) {
     }
 
+    @Override
     public void setColorFilter(ColorFilter colorFilter) {
     }
 
+    @Override
     public int getOpacity() {
-        return PixelFormat.TRANSLUCENT;
+        return PixelFormat.TRANSPARENT;
     }
 
-    public void setBounds(int i, int i2, int i3, int i4) {
-        super.setBounds(i, i2, i3, i4);
-        if (i3 - i != mViewWidth || i4 - i2 != mViewHeight) {
-            mViewWidth = i3 - i;
-            mViewHeight = i4 - i2;
+    @Override
+    public void setBounds(int left, int top, int right, int bottom) {
+        super.setBounds(left, top, right, bottom);
+        if (right - left != mViewWidth || bottom - top != mViewHeight) {
+            mViewWidth = right - left;
+            mViewHeight = bottom - top;
             mInited = false;
             init();
         }
     }
 
-    public SpeechDrawable setMode(int i) {
-        mMode = i;
-        if (i == 2) {
-            mIndex = 0;
-            mIncrease = true;
-        }
-        return this;
-    }
-
-    public void setStepWidth(int i) {
-        mStepWidth = i;
-    }
-
-    public void setLineWidth(int i) {
-        mLineWidth = (float) i;
-    }
-
-    public void setMinHeight(int i) {
-        mMinHeight = i;
-    }
 
     private void init() {
         if (!mInited) {
-            mLineCount = mViewWidth / (((int) mLineWidth) + mStepWidth);
+            mLineCount = mViewWidth / (mLineWidth + mStepWidth);
             mFrameUnitPool = new FrameUnitPool(mLineCount + 1);
-            mDenominator = Math.pow(mLineCount, 4);
-            int i = (mViewWidth - ((((int) mLineWidth) + mStepWidth) * mLineCount)) / 2;
+            mDenominator = Math.pow(mLineCount, POW_FOUR);
+            int startLeft = (mViewWidth - (mLineWidth + mStepWidth) * mLineCount) / 2;
             mDatas = new ArrayList<>();
-            for (int i2 = 0; i2 < mLineCount; i2++) {
+            for (int i = 0; i < mLineCount; i++) {
                 LineData lineData = new LineData();
-                lineData.x = i;
-                lineData.y = mViewHeight / 2;
-                lineData.width = (int) mLineWidth;
+                lineData.Left = startLeft;
+                lineData.centerHeight = mViewHeight / 2;
+                lineData.width = mLineWidth;
                 lineData.height = mMinHeight;
                 lineData.timeList = new ArrayList<>();
                 mDatas.add(lineData);
-                i = (int) (((float) i) + mLineWidth + ((float) mStepWidth));
+                startLeft = startLeft + mLineWidth + mStepWidth;
             }
             mSv = new boolean[mLineCount];
-            int i3 = mLineCount;
-            if (i3 < 62) {
-                i3 = 62;
+            int count = mLineCount;
+            if (count < MIN_BUF_SIZE) {
+                count = MIN_BUF_SIZE;
             }
-            mEh = new float[i3];
-            mLoc = new int[i3];
+            mEh = new float[count];
+            mLoc = new int[count];
             mInited = true;
-            if (BuildConfig.DEBUG) {
-                Log.d(TAG, "init w: " + mLineWidth + " h: " + mMinHeight + " s: " + mStepWidth);
-            }
+
         }
     }
 
-    private double getRandomValue(int i) {
-        if (mRandomCaches.indexOfKey(i) >= 0) {
-            return mRandomCaches.get(i);
+    private double getRandomValue(int value) {
+        if (mRandomCaches.indexOfKey(value) >= 0) {
+            return mRandomCaches.get(value);
         }
-        double pow = 18.0d * Math.pow((double) i, 4.0d);
-        mRandomCaches.put(i, pow);
+        double pow = POW_INT * Math.pow(value, POW_FOUR);
+        mRandomCaches.put(value, pow);
         return pow;
     }
 
@@ -176,289 +199,231 @@ public class SpeechDrawable extends Drawable implements Runnable {
         if (mHeightCaches.indexOfKey(i) >= 0) {
             return mHeightCaches.get(i);
         }
-        double pow = Math.pow(0.5d, (double) i);
+        double pow = Math.pow(POW_HALF, i);
         mHeightCaches.put(i, pow);
         return pow;
     }
 
-    public void disable() {
-        if (mEnable) {
-            mEnable = false;
-            init();
-            mPaint.setColor(mDisableColor);
-            for (int i = 0; i < mDatas.size(); i++) {
-                mDatas.get(i).height = mMinHeight;
-            }
-        }
-    }
-
+    /**
+     * 重置为默认状态
+     */
     public void reset() {
-        if (mMode == 1) {
-            init();
-            if (!mEnable) {
-                mEnable = true;
-                mPaint.setColor(mNormalColor);
-            }
-            for (LineData lineData : mDatas) {
-                lineData.timeList.clear();
-                lineData.height = mMinHeight;
-            }
+        init();
+        if (!mEnable) {
+            mEnable = true;
+            mPaint.setColor(NORMAL_COLOR);
+        }
+        for (LineData lineData : mDatas) {
+            lineData.timeList.clear();
+            lineData.height = mMinHeight;
         }
     }
 
-    public void setVolume(int i) {
-        float f;
-        float f2;
-        if (mMode == 1) {
-            init();
-            if (BuildConfig.DEBUG) {
-                Log.d(TAG, "vol: " + i);
-            }
-            if (!mEnable) {
-                mEnable = true;
-                mPaint.setColor(mNormalColor);
-            }
-            float f3 = (float) (((double) i) / 8.0d);
-            if (f3 > 0.6f) {
-                f3 = 0.6f;
-            }
-            float f4 = (float) (mLineCount / 2);
-            if (f3 >= 0.1f) {
-                f = 2.0f + f3;
-                mLowMode = 0;
-            } else if (mLowMode <= 0 || mLowMode >= 3) {
-                mLowMode = 0;
-                mLowMode++;
-                f3 = 0.1f;
-                f = 0.05f;
+    /**
+     * 设置声音参数
+     *
+     * @param volume int
+     */
+    public void setVolume(int volume) {
+        float tempF;
+        float tempF2;
+        init();
+        if (!mEnable) {
+            mEnable = true;
+            mPaint.setColor(mLineColor);
+        }
+        float tempVolume = (float) (volume / DOUBLE_TEMP_VOL);
+        if (tempVolume > MAX_TEMP_VOL) {
+            tempVolume = MAX_TEMP_VOL;
+        }
+        int halfLineCount = mLineCount / 2;
+        if (tempVolume >= FLOAT_MIN_VOL) {
+            tempF = FLOAT_TOW + tempVolume;
+            mLowMode = 0;
+        } else if (mLowMode <= 0 || mLowMode >= 3) {
+            mLowMode = 0;
+            mLowMode++;
+            tempVolume = FLOAT_MIN_VOL;
+            tempF = TEMP_F;
+        } else {
+            mLowMode++;
+            return;
+        }
+        for (int i = 0; i < mLineCount; i++) {
+            if (i < halfLineCount) {
+                mSv[i] = randomBool((int) (tempVolume * ((getRandomValue(i) / mDenominator) + DOUBLE_PARSE) * INT_HUNDRED));
+
             } else {
-                mLowMode++;
-                return;
+                mSv[i] = randomBool((int) (tempVolume * ((getRandomValue(i - mLineCount) / mDenominator) + DOUBLE_PARSE) * INT_HUNDRED));
             }
-            for (int i2 = 0; i2 < mLineCount; i2++) {
-                if (((float) i2) < f4) {
-                    mSv[i2] = randomBool((int) (((double) f3) * ((getRandomValue(i2) / mDenominator) + DOUBLE_PARSE) * 100.0d));
-                } else {
-                    mSv[i2] = randomBool((int) (((double) f3) * ((getRandomValue(i2 - mLineCount) / mDenominator) + DOUBLE_PARSE) * 100.0d));
+        }
+        int random2 = (int) (FLOAT_RANDOM * tempF) + (getsRandom() % 3) - 1;
+        if (random2 <= 0) {
+            random2 = 1;
+        }
+        float pow = FLOAT_POW * (float) Math.pow(tempF, EXPONENT) * mViewHeight;
+        for (int i = 0; i < random2; i++) {
+            if (((float) i) < halfLineCount) {
+                mEh[i] = (float) (pow * ((getRandomValue(i) / mDenominator) + DOUBLE_PARSE) * INT_TEN);
+            } else {
+                mEh[i] = (float) (pow * ((getRandomValue(i - mLineCount) / mDenominator) + DOUBLE_PARSE) * INT_TEN);
+            }
+        }
+        int tempNum = 0;
+        for (int i = 0; i < mLineCount; i++) {
+            if (mSv[i]) {
+                mLoc[tempNum] = i;
+                tempNum++;
+            }
+        }
+        if (tempNum > 1) {
+            int min = Math.min(INT_MIN, tempNum);
+            for (int i = 0; i < min; i++) {
+                int random3 = getsRandom() % tempNum;
+                int random4 = getsRandom() % tempNum;
+                if (random3 == random4) {
+                    random4 = (random4 + 1) % tempNum;
                 }
+                int temp = mLoc[random3];
+                mLoc[random3] = mLoc[random4];
+                mLoc[random4] = temp;
             }
-            int random2 = (((int) (20.0f * f)) + (getRandom() % 3)) - 1;
-            if (random2 <= 0) {
-                random2 = 1;
+        }
+        int min2 = Math.min(random2, tempNum);
+
+        for (int i = 0; i < mLineCount; i++) {
+            float minHeight = mMinHeight;
+            for (int j = 0; j < min2; j++) {
+                minHeight = (float) (minHeight + (mEh[j] * getHeightValue(Math.abs(mLoc[j] - i))));
             }
-            float pow = 0.8f * ((float) Math.pow((double) f, 0.3330000042915344d)) * ((float) mViewHeight);
-            for (int i3 = 0; i3 < random2; i3++) {
-                if (((float) i3) < f4) {
-                    mEh[i3] = (float) (((double) pow) * ((getRandomValue(i3) / mDenominator) + DOUBLE_PARSE) * 10.0d);
-                } else {
-                    mEh[i3] = (float) (((double) pow) * ((getRandomValue(i3 - mLineCount) / mDenominator) + DOUBLE_PARSE) * 10.0d);
-                }
+            if (minHeight > mViewHeight) {
+                tempF2 = mViewHeight;
+            } else {
+                tempF2 = minHeight;
             }
-            int i4 = 0;
-            for (int i5 = 0; i5 < mLineCount; i5++) {
-                if (mSv[i5]) {
-                    mLoc[i4] = i5;
-                    i4++;
-                }
+            LineData lineData = mDatas.get(i);
+            List<FrameUnit> list = lineData.timeList;
+            if (Math.abs(tempF2 - lineData.lastHeight) >= 1) {
+                float tempD = tempF2 < lineData.lastHeight ? FLOAT_LINE : FLOAT_LINE_MIN;
+                FrameUnit frameUnit = mFrameUnitPool.getObject();
+                frameUnit.center = tempF2 - lineData.lastHeight;
+                frameUnit.duration = tempD;
+                frameUnit.bound = 0.0f;
+                frameUnit.time = 0.0f;
+                list.add(frameUnit);
             }
-            if (i4 > 1) {
-                int min = Math.min(30, i4);
-                for (int i6 = 0; i6 < min; i6++) {
-                    int random3 = getRandom() % i4;
-                    int random4 = getRandom() % i4;
-                    if (random3 == random4) {
-                        random4 = (random4 + 1) % i4;
-                    }
-                    int i7 = mLoc[random3];
-                    mLoc[random3] = mLoc[random4];
-                    mLoc[random4] = i7;
-                }
-            }
-            int min2 = Math.min(random2, i4);
-            if (BuildConfig.DEBUG) {
-                Log.d(TAG, "factm: " + min2);
-            }
-            for (int i8 = 0; i8 < mLineCount; i8++) {
-                float f5 = (float) mMinHeight;
-                for (int i9 = 0; i9 < min2; i9++) {
-                    f5 = (float) (((double) f5) + (((double) mEh[i9]) * getHeightValue(Math.abs(mLoc[i9] - i8))));
-                }
-                if (f5 > ((float) mViewHeight)) {
-                    f2 = (float) mViewHeight;
-                } else {
-                    f2 = f5;
-                }
-                LineData lineData = mDatas.get(i8);
-                List<FrameUnit> list = lineData.timeList;
-                if (Math.abs(f2 - lineData.lastHeight) >= 1.0f) {
-                    float f6 = f2 < lineData.lastHeight ? 0.3f : 0.135f;
-                    FrameUnit frameUnit = (FrameUnit) mFrameUnitPool.getObject();
-                    frameUnit.c = f2 - lineData.lastHeight;
-                    frameUnit.d = f6;
-                    frameUnit.b = 0.0f;
-                    frameUnit.t = 0.0f;
-                    list.add(frameUnit);
-                }
-                lineData.lastHeight = f2;
-            }
+            lineData.lastHeight = tempF2;
         }
     }
 
     public void drawVolume(Canvas canvas) {
-        float f;
+        float tempLeft;
         Rect bounds = getBounds();
         for (int i = 0; i < mLineCount; i++) {
             LineData lineData = mDatas.get(i);
             List<FrameUnit> list = lineData.timeList;
-            float f2 = 0.0f;
-            int i2 = 0;
+            float quart = 0.0f;
+            int tempInt = 0;
             while (true) {
-                int i3 = i2;
-                if (i3 >= list.size()) {
+                int sizeInt = tempInt;
+                if (sizeInt >= list.size()) {
                     break;
                 }
-                FrameUnit frameUnit = list.get(i3);
-                frameUnit.t += 0.016f;
-                if (frameUnit.t > frameUnit.d) {
-                    float f3 = frameUnit.c - frameUnit.b;
-                    mFrameUnitPool.returnObject(list.remove(i3));
-                    i3--;
-                    f = f3;
+                FrameUnit frameUnit = list.get(sizeInt);
+                frameUnit.time += DRAW_INTERVAL;
+                if (frameUnit.time > frameUnit.duration) {
+                    float tempFrame = frameUnit.center - frameUnit.bound;
+                    mFrameUnitPool.returnObject(list.remove(sizeInt));
+                    sizeInt--;
+                    tempLeft = tempFrame;
                 } else {
-                    float quartInOut = (float) quartInOut((double) frameUnit.t, 0.0d, (double) frameUnit.c, (double) frameUnit.d);
-                    float f4 = frameUnit.b;
-                    frameUnit.b = quartInOut;
-                    f = quartInOut - f4;
+                    float quartInOut = (float) quartInOut(frameUnit.time, 0.0d, frameUnit.center, frameUnit.duration);
+                    float bound = frameUnit.bound;
+                    frameUnit.bound = quartInOut;
+                    tempLeft = quartInOut - bound;
                 }
-                f2 += f;
-                i2 = i3 + 1;
+                quart += tempLeft;
+                tempInt = sizeInt + 1;
             }
-            if (f2 != 0.0f) {
-                float f5 = ((float) lineData.height) + f2;
-                if (f5 < ((float) mMinHeight)) {
-                    f5 = (float) mMinHeight;
+            if (quart != 0.0f) {
+                float height = ((float) lineData.height) + quart;
+                if (height < ((float) mMinHeight)) {
+                    height = (float) mMinHeight;
                 }
-                lineData.height = (int) f5;
+                lineData.height = (int) height;
             } else if (list.size() == 0 && ((float) lineData.height) < ((float) mMinHeight)) {
                 lineData.height = mMinHeight;
             }
-            mDrawRect.left = (float) (lineData.x + bounds.left);
-            mDrawRect.top = (float) ((lineData.y - (lineData.height / 2)) + bounds.top);
+            mDrawRect.left = (float) (lineData.Left + bounds.left);
+            mDrawRect.top = (float) ((lineData.centerHeight - (lineData.height / 2)) + bounds.top);
             mDrawRect.right = mDrawRect.left + mLineWidth;
-            mDrawRect.bottom = mDrawRect.top + ((float) lineData.height);
+            mDrawRect.bottom = mDrawRect.top + lineData.height;
             canvas.drawRect(mDrawRect, mPaint);
         }
     }
 
-    public void drawWait(Canvas canvas) {
-        Rect bounds = getBounds();
-        if (mIncrease) {
-            for (int i = 0; i < mLineCount; i++) {
-                LineData lineData = mDatas.get(i);
-                mDrawRect.left = (float) (lineData.x + bounds.left);
-                mDrawRect.right = ((float) lineData.x) + mLineWidth + ((float) bounds.left);
-                if (i == mIndex - 1) {
-                    mDrawRect.top = (float) ((lineData.y - ((mMinHeight * 3) / 2)) + bounds.top);
-                    mDrawRect.bottom = mDrawRect.top + ((float) (mMinHeight * 3));
-                } else if (i == mIndex) {
-                    mDrawRect.top = (float) ((lineData.y - ((mMinHeight * 5) / 2)) + bounds.top);
-                    mDrawRect.bottom = mDrawRect.top + ((float) (mMinHeight * 5));
-                } else {
-                    mDrawRect.top = (float) ((lineData.y - (mMinHeight / 2)) + bounds.top);
-                    mDrawRect.bottom = mDrawRect.top + ((float) mMinHeight);
-                }
-                canvas.drawRoundRect(mDrawRect, 5.0f, 5.0f, mPaint);
-            }
-            mIndex += 2;
-            if (mIndex >= mLineCount) {
-                mIndex = mLineCount - 1;
-                mIncrease = false;
-                return;
-            }
-            return;
-        }
-        for (int i2 = 0; i2 < mLineCount; i2++) {
-            LineData lineData2 = mDatas.get(i2);
-            mDrawRect.left = (float) (lineData2.x + bounds.left);
-            mDrawRect.right = ((float) lineData2.x) + mLineWidth + ((float) bounds.left);
-            if (i2 == mIndex + 1) {
-                mDrawRect.top = (float) ((lineData2.y - ((mMinHeight * 3) / 2)) + bounds.top);
-                mDrawRect.bottom = mDrawRect.top + ((float) (mMinHeight * 3));
-            } else if (i2 == mIndex) {
-                mDrawRect.top = (float) ((lineData2.y - ((mMinHeight * 5) / 2)) + bounds.top);
-                mDrawRect.bottom = mDrawRect.top + ((float) (mMinHeight * 5));
-            } else {
-                mDrawRect.top = (float) ((lineData2.y - (mMinHeight / 2)) + bounds.top);
-                mDrawRect.bottom = mDrawRect.top + ((float) mMinHeight);
-            }
-            canvas.drawRoundRect(mDrawRect, 5.0f, 5.0f, mPaint);
-        }
-        mIndex -= 2;
-        if (mIndex < 0) {
-            mIndex = 0;
-            mIncrease = true;
-        }
-    }
 
-    static boolean randomBool(int i) {
-        if (i <= 0) {
+    static boolean randomBool(int value) {
+        if (value <= 0) {
             return false;
         }
-        return i >= 100 || getRandom() % 1000 < i * 10;
+        return value >= INT_HUNDRED || getsRandom() % 1000 < value * INT_TEN;
     }
 
-    static double quartInOut(double d, double d2, double d3, double d4) {
-        return -d3 / 2 * (Math.cos((Math.PI * d) / d4) - 1) + d2;
+    static double quartInOut(double doubleA, double doubleB, double doubleC, double doubleD) {
+        return -doubleC / 2 * (Math.cos((Math.PI * doubleA) / doubleD) - 1) + doubleB;
     }
 
-    public static int getRandom() {
-        if (random == null) {
-            random = new Random(System.currentTimeMillis());
+    private static int getsRandom() {
+        if (sRandom == null) {
+            sRandom = new Random(System.currentTimeMillis());
         }
-        return Math.abs(random.nextInt());
+        return Math.abs(sRandom.nextInt());
     }
 
+    @Override
     public void run() {
         unscheduleSelf(this);
         if (mIsRunning) {
             invalidateSelf();
-            if (mMode == 1) {
-                scheduleSelf(this, SystemClock.uptimeMillis() + 16);
-            } else if (mMode == 2) {
-                scheduleSelf(this, SystemClock.uptimeMillis() + 50);
-            }
+            scheduleSelf(this, SystemClock.uptimeMillis() + 16);
         }
     }
 
+    /**
+     *
+     * 开始绘制
+     */
     public void start() {
         stop();
         mIsRunning = true;
         run();
     }
 
+    /**
+     * 停止绘制
+     */
     public void stop() {
         mIsRunning = false;
-        mIncrease = false;
-        mIndex = 0;
         unscheduleSelf(this);
     }
 
-    public static class FrameUnit extends RecyclableObject {
-        public float b;
-        public float c;
-        public float d;
-        public float t;
+    private static class FrameUnit extends RecyclableObject {
+        public float bound;
+        public float center;
+        public float duration;
+        public float time;
 
         @Override
         public void doRecycle() {
         }
     }
 
-    public static class FrameUnitPool extends ObjectPool<FrameUnit> {
+    private static class FrameUnitPool extends ObjectPool<FrameUnit> {
         private int mCacheSize;
 
-        public FrameUnitPool(int i) {
-            mCacheSize = i;
+        public FrameUnitPool(int cacheSize) {
+            mCacheSize = cacheSize;
         }
 
 
@@ -473,39 +438,13 @@ public class SpeechDrawable extends Drawable implements Runnable {
         }
     }
 
-    public int getLineWidth() {
-        return (int) mLineWidth;
-    }
 
-    public List<LineData> getDatas() {
-        return mDatas;
-    }
-
-    public int getLineCount() {
-        return mLineCount;
-    }
-
-    public int getMinHeight() {
-        return mMinHeight;
-    }
-
-    public FrameUnitPool getFrameUnitPool() {
-        return mFrameUnitPool;
-    }
-
-    public int getIndex() {
-        return mIndex;
-    }
-
-    public void setIndex(int i) {
-        mIndex = i;
-    }
-
-    public void setIncrease(boolean z) {
-        mIncrease = z;
-    }
-
-    public boolean isIncrease() {
-        return mIncrease;
+    private static class LineData {
+        public int height;
+        public float lastHeight;
+        public List<FrameUnit> timeList;
+        public int width;
+        public int Left;
+        public int centerHeight;
     }
 }

@@ -1,7 +1,7 @@
 package com.newolf.volumelib;
 
 /**
- * 功能描述
+ * 可回收的对象
  *
  * @author NeWolf
  * @since 2020-12-16

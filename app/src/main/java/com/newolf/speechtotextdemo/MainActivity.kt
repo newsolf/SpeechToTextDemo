@@ -39,7 +39,7 @@ class MainActivity : AppCompatActivity() {
         val speechDrawable = SpeechDrawable()
         speechDrawable.lineWidth = 4
         speechDrawable.minHeight = 4
-        speechDrawable.setStepWidth(10)
+        speechDrawable.setStepWidth(8)
         iv.setImageDrawable(speechDrawable)
         speechDrawable.start()
 
