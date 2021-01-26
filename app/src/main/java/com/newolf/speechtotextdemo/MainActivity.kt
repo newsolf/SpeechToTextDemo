@@ -53,7 +53,8 @@ class MainActivity : AppCompatActivity() {
 
 
         val intent1 = Intent()
-        intent1.putExtra(AsrConstants.EXT_SUR_LANGUAGE, AsrConstants.SUR_LANGUAGE_FR)
+        intent1.putExtra(AsrConstants.EXT_SUR_LANGUAGE, AsrConstants.SUR_LANGUAGE_CN)
+        intent1.putExtra(AsrConstants.ASR_VAD_FRONT_WAIT_MS, 10000)
         intent1.putExtra(AsrConstants.ASR_VAD_END_WAIT_MS, 4000)
 
         asrCloudEngine.init(intent, object : AsrListener {
